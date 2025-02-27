@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Users, Bell, Settings, Calendar, Users2 } from "lucide-react";
+import { Home, Users, Bell, Settings, Calendar, Users2, Pencil } from "lucide-react";
 
 interface Plan {
   id: string;
@@ -93,7 +93,15 @@ export default function Dashboard() {
           ) : (
             plans.map((plan) => (
               <div key={plan.id} className="bg-white rounded-xl p-4 shadow-sm">
-                <h3 className="text-xl text-black font-bold mb-2">{plan.name}</h3>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-xl text-black font-bold">{plan.name}</h3>
+                  <button 
+                    onClick={() => router.push(`/plan/${plan.id}/edit`)}
+                    className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                  >
+                    <Pencil className="w-5 h-5" />
+                  </button>
+                </div>
                 <p className="text-xl text-black mb-4">${plan.cost.toFixed(2)}/monthly</p>
                 
                 <div className="flex justify-between items-center mb-2">
