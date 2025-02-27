@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 
-const prisma = new PrismaClient();
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { name, email, password } = await req.json();
+    const { name, email, password } = await request.json();
 
     // Validate input
-    if (!name || !email || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Email and password are required" },
         { status: 400 }
       );
     }
@@ -23,7 +21,7 @@ export async function POST(req: Request) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "User already exists" },
+        { error: "User with this email already exists" },
         { status: 400 }
       );
     }
@@ -40,13 +38,10 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
-    });
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error("Signup error:", error);
     return NextResponse.json(

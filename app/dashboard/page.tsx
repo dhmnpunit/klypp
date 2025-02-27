@@ -2,11 +2,24 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Home, Users, Bell, Settings, Calendar, Users2 } from "lucide-react";
+
+interface Plan {
+  id: string;
+  name: string;
+  cost: number;
+  renewsIn: number;
+  renewalDate: string;
+  currentMembers: number;
+  maxMembers: number;
+}
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -14,7 +27,42 @@ export default function Dashboard() {
     }
   }, [status, router]);
 
-  if (status === "loading") {
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        console.log('Session status:', status);
+        console.log('Session data:', session);
+        console.log('Fetching plans...');
+        const response = await fetch('/api/plans', {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'  // Important: include credentials
+        });
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Error response:', errorData);
+          throw new Error(`Failed to fetch plans: ${errorData.error || response.statusText}`);
+        }
+        const data = await response.json();
+        console.log('Fetched plans:', data);
+        setPlans(data);
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+        // Show error in UI
+        setPlans([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (status === "authenticated") {
+      fetchPlans();
+    }
+  }, [status, session]); // Added session to dependencies
+
+  if (status === "loading" || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
@@ -22,121 +70,81 @@ export default function Dashboard() {
     );
   }
 
+  const totalMonthlyCost = plans.reduce((acc, plan) => acc + plan.cost, 0);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold">Dashboard</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">Welcome, {session?.user?.name}</span>
-              <button
-                onClick={() => router.push("/api/auth/signout")}
-                className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-gray-700"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-gray-500 text-sm font-medium">Total Customers</h3>
-              <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                +12%
-              </span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900 mt-2">2,340</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-gray-500 text-sm font-medium">Revenue</h3>
-              <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                +8%
-              </span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900 mt-2">$45,230</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-gray-500 text-sm font-medium">Active Users</h3>
-              <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                +23%
-              </span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900 mt-2">1,274</p>
-          </div>
+      <div className="p-4 pb-24">
+        <h2 className="text-2xl font-bold text-black mb-6">My Plans</h2>
+        
+        {/* Total Monthly Cost */}
+        <div className="mb-6">
+          <p className="text-gray-600 mb-1">Total Monthly Cost</p>
+          <p className="text-3xl text-black font-bold">${totalMonthlyCost.toFixed(2)}</p>
         </div>
 
-        {/* Recent Activity Section */}
-        <div className="bg-white rounded-xl shadow-sm">
-          <div className="p-6">
-            <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-          </div>
-          <div className="border-t border-gray-200">
-            <ul role="list" className="divide-y divide-gray-200">
-              {[
-                {
-                  user: "John Doe",
-                  action: "Created a new account",
-                  time: "2 minutes ago",
-                  icon: (
-                    <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                  ),
-                },
-                {
-                  user: "Sarah Smith",
-                  action: "Updated their profile",
-                  time: "1 hour ago",
-                  icon: (
-                    <svg className="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  ),
-                },
-                {
-                  user: "Mike Johnson",
-                  action: "Completed their first task",
-                  time: "3 hours ago",
-                  icon: (
-                    <svg className="h-5 w-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  ),
-                },
-              ].map((item, index) => (
-                <li key={index} className="px-6 py-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">{item.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {item.user}
-                      </p>
-                      <p className="text-sm text-gray-500 truncate">{item.action}</p>
-                    </div>
-                    <div className="flex-shrink-0 text-sm text-gray-500">
-                      {item.time}
-                    </div>
+        {/* Subscription Cards */}
+        <div className="space-y-4">
+          {plans.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No plans yet. Click the + button to add one!
+            </div>
+          ) : (
+            plans.map((plan) => (
+              <div key={plan.id} className="bg-white rounded-xl p-4 shadow-sm">
+                <h3 className="text-xl text-black font-bold mb-2">{plan.name}</h3>
+                <p className="text-xl text-black mb-4">${plan.cost.toFixed(2)}/monthly</p>
+                
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center">
+                    <Calendar className="w-5 h-5 text-gray-400 mr-2" />
+                    <span className="text-gray-600">
+                      Renews in <span className={plan.renewsIn <= 7 ? "text-red-500" : "text-green-500"}>{plan.renewsIn} days</span>
+                    </span>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <div className="flex items-center">
+                    <Users2 className="w-5 h-5 text-gray-400 mr-2" />
+                    <span className="text-gray-600">{plan.currentMembers}/{plan.maxMembers} members</span>
+                  </div>
+                </div>
+                
+                <p className="text-gray-600 text-sm">Next renewal: {plan.renewalDate}</p>
+              </div>
+            ))
+          )}
         </div>
-      </main>
+      </div>
+
+      {/* Floating Action Button */}
+      <button 
+        onClick={() => router.push('/plan/add')}
+        className="fixed right-4 bottom-20 w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg hover:bg-blue-600 transition-colors"
+      >
+        +
+      </button>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 w-full bg-white border-t">
+        <div className="flex justify-around py-3">
+          <button className="flex flex-col items-center text-blue-500">
+            <Home className="w-6 h-6" />
+            <span className="text-xs mt-1">My Plans</span>
+          </button>
+          <button className="flex flex-col items-center text-gray-400">
+            <Users className="w-6 h-6" />
+            <span className="text-xs mt-1">Shared Plans</span>
+          </button>
+          <button className="flex flex-col items-center text-gray-400">
+            <Bell className="w-6 h-6" />
+            <span className="text-xs mt-1">Renewals</span>
+          </button>
+          <button className="flex flex-col items-center text-gray-400">
+            <Settings className="w-6 h-6" />
+            <span className="text-xs mt-1">Settings</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 } 
