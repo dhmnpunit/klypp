@@ -128,8 +128,12 @@ export async function DELETE(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    // Await params properly
+    const resolvedParams = await Promise.resolve(params);
+    const planId = resolvedParams.id;
+
     const plan = await prisma.plan.findUnique({
-      where: { id: params.id }
+      where: { id: planId }
     });
 
     if (!plan) {
@@ -140,9 +144,26 @@ export async function DELETE(
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    await prisma.plan.delete({
-      where: { id: params.id }
-    });
+    // Delete plan and its members in a transaction
+    await prisma.$transaction([
+      // First delete all plan members
+      prisma.planMember.deleteMany({
+        where: { planId: planId }
+      }),
+      // Then delete all notifications related to this plan
+      prisma.notification.deleteMany({
+        where: {
+          metadata: {
+            path: ['planId'],
+            equals: planId
+          }
+        }
+      }),
+      // Finally delete the plan itself
+      prisma.plan.delete({
+        where: { id: planId }
+      })
+    ]);
 
     return NextResponse.json({ message: "Plan deleted successfully" });
   } catch (error) {

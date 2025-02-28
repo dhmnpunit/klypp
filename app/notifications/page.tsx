@@ -28,10 +28,6 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
   const fetchNotifications = async () => {
     try {
       const response = await fetch("/api/notifications");
@@ -46,6 +42,16 @@ export default function NotificationsPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // Set up polling every 10 seconds
+    const intervalId = setInterval(fetchNotifications, 10000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []); // Empty dependency array means this effect runs once on mount
 
   const markAsRead = async (notificationId: string) => {
     try {

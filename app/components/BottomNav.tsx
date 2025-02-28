@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Users, Bell, Settings } from "lucide-react";
+import { Home, Users, Settings } from "lucide-react";
+import NotificationBadge from "./NotificationBadge";
 
 export default function BottomNav() {
   const router = useRouter();
@@ -35,8 +36,9 @@ export default function BottomNav() {
             isActive('/notifications') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'
           }`}
         >
-          <Bell className="w-6 h-6" />
-          <span className="text-xs mt-1">Notifications</span>
+          <div className="flex flex-col items-center">
+            <NotificationBadge isActive={isActive('/notifications')} />
+          </div>
         </button>
         <button 
           onClick={() => router.push('/settings')}
