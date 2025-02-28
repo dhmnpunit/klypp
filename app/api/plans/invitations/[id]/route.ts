@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
 import { authOptions } from '../../../auth/[...nextauth]/route';
+import { pusherServer } from '@/lib/pusher';
 
 export async function PUT(
   request: NextRequest,
@@ -64,6 +65,18 @@ export async function PUT(
       );
     }
 
+    // Find the original notification
+    const notification = await prisma.notification.findFirst({
+      where: {
+        userId: currentUser.id,
+        type: "INVITE",
+        metadata: {
+          path: ["memberId"],
+          equals: invitationId
+        }
+      }
+    });
+
     if (action === 'ACCEPT') {
       // Check if the plan has reached its member limit
       if (invitation.plan.currentMembers >= invitation.plan.maxMembers) {
@@ -73,20 +86,8 @@ export async function PUT(
         );
       }
 
-      // Find the original notification
-      const notification = await prisma.notification.findFirst({
-        where: {
-          userId: currentUser.id,
-          type: "INVITE",
-          metadata: {
-            path: ["memberId"],
-            equals: invitationId
-          }
-        }
-      });
-
       // Update the invitation status, increment currentMembers, and update notification
-      const updatedInvitation = await prisma.$transaction([
+      const [updatedInvitation, _, updatedNotification] = await prisma.$transaction([
         prisma.planMember.update({
           where: { id: invitationId },
           data: { status: 'ACTIVE' }
@@ -114,22 +115,17 @@ export async function PUT(
         ] : [])
       ]);
 
-      return NextResponse.json(updatedInvitation[0]);
-    } else {
-      // Find the original notification
-      const notification = await prisma.notification.findFirst({
-        where: {
-          userId: currentUser.id,
-          type: "INVITE",
-          metadata: {
-            path: ["memberId"],
-            equals: invitationId
-          }
-        }
-      });
+      // Trigger Pusher event for notification update
+      if (updatedNotification) {
+        await pusherServer.trigger(`user-${currentUser.id}`, 'notification-updated', {
+          notification: updatedNotification
+        });
+      }
 
+      return NextResponse.json(updatedInvitation);
+    } else {
       // Decline the invitation and update notification
-      const [updatedInvitation] = await prisma.$transaction([
+      const [updatedInvitation, updatedNotification] = await prisma.$transaction([
         prisma.planMember.update({
           where: { id: invitationId },
           data: { status: 'DECLINED' }
@@ -148,6 +144,13 @@ export async function PUT(
           })
         ] : [])
       ]);
+
+      // Trigger Pusher event for notification update
+      if (updatedNotification) {
+        await pusherServer.trigger(`user-${currentUser.id}`, 'notification-updated', {
+          notification: updatedNotification
+        });
+      }
 
       return NextResponse.json(updatedInvitation);
     }

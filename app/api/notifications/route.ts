@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
+import { pusherServer } from "@/lib/pusher";
 
 export async function GET() {
   try {
@@ -46,16 +47,33 @@ export async function PATCH(request: Request) {
     const notification = await prisma.notification.update({
       where: {
         id: notificationId,
-        userId: session.user.id // Ensure the notification belongs to the user
+        userId: session.user.id
       },
       data: {
         isRead: true
       }
     });
 
+    // Trigger real-time update
+    await pusherServer.trigger(`user-${session.user.id}`, 'notification-updated', {
+      notification
+    });
+
     return NextResponse.json(notification);
   } catch (error) {
     console.error("Error updating notification:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
+// Helper function to trigger notification updates
+export async function triggerNotificationUpdate(userId: string, notification: any) {
+  try {
+    await pusherServer.trigger(`user-${userId}`, 'notification-new', {
+      notification
+    });
+  } catch (error) {
+    console.error("Error triggering notification update:", error);
+    // Don't throw the error as this is a background operation
   }
 } 

@@ -1,15 +1,15 @@
-import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Providers } from "./providers";
 import BottomNav from "./components/BottomNav";
 import { Toaster } from "sonner";
+import { NotificationProvider } from './contexts/NotificationContext';
+import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Klypp - Subscription Manager",
-  description: "Manage your subscriptions and split costs with friends",
+export const metadata = {
+  title: "Klypp",
+  description: "Split your subscriptions with friends",
 };
 
 export default function RootLayout({
@@ -21,9 +21,11 @@ export default function RootLayout({
     <html lang="en" className="light">
       <body className={inter.className}>
         <Providers>
-          {children}
-          <BottomNav />
-          <Toaster richColors position="top-center" />
+          <NotificationProvider>
+            {children}
+            <BottomNav />
+            <Toaster richColors position="top-center" />
+          </NotificationProvider>
         </Providers>
       </body>
     </html>

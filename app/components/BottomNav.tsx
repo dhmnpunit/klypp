@@ -2,15 +2,27 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { Home, Users, Settings } from "lucide-react";
+import { useSession } from "next-auth/react";
 import NotificationBadge from "./NotificationBadge";
 
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const { status } = useSession();
 
   const isActive = (path: string) => {
     return pathname === path;
   };
+
+  // Don't render the navigation bar if user is not authenticated
+  if (status !== "authenticated") {
+    return null;
+  }
+
+  // Don't render on authentication-related pages
+  if (['/login', '/signup', '/'].includes(pathname)) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">

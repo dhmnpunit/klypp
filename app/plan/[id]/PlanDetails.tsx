@@ -124,6 +124,26 @@ export function PlanDetails({ id }: { id: string }) {
     fetchPlan();
   };
 
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (!confirm(`Are you sure you want to remove ${memberName} from this plan?`)) return;
+
+    try {
+      const response = await fetch(`/api/plans/members/${memberId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to remove member");
+
+      // Refresh plan data to show updated member list
+      const updatedPlan = await fetch(`/api/plans/${plan.id}`);
+      if (!updatedPlan.ok) throw new Error("Failed to fetch updated plan");
+      const data = await updatedPlan.json();
+      setPlan(data);
+    } catch (error) {
+      console.error("Error removing member:", error);
+    }
+  };
+
   const isOwner = session?.user?.id === plan.ownerId;
   const memberCount = plan.members?.length || 0;
   const costPerMember = plan.cost / (memberCount || 1);
@@ -235,9 +255,20 @@ export function PlanDetails({ id }: { id: string }) {
                       <p className="text-black dark:text-white font-medium">{member.user.name}</p>
                       <p className="text-sm text-gray-500">{member.user.email}</p>
                     </div>
-                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full dark:bg-green-900 dark:text-green-200">
-                      Member
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full dark:bg-green-900 dark:text-green-200">
+                        Member
+                      </span>
+                      {isOwner && (
+                        <button
+                          onClick={() => handleRemoveMember(member.id, member.user.name)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Remove member"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
             ) : (

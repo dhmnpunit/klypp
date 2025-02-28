@@ -1,32 +1,14 @@
 "use client";
 
-import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
+import { useNotifications } from '../contexts/NotificationContext';
 
 interface NotificationBadgeProps {
   isActive: boolean;
 }
 
 export default function NotificationBadge({ isActive }: NotificationBadgeProps) {
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const response = await fetch('/api/notifications');
-      if (!response.ok) return;
-      const notifications = await response.json();
-      const unread = notifications.filter((n: any) => !n.isRead).length;
-      setUnreadCount(unread);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchUnreadCount();
-    const intervalId = setInterval(fetchUnreadCount, 10000);
-    return () => clearInterval(intervalId);
-  }, []);
+  const { unreadCount } = useNotifications();
 
   return (
     <>

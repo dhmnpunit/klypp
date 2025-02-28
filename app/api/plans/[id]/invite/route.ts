@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
+import { pusherServer } from "@/lib/pusher";
+import { triggerNotificationUpdate } from "@/app/api/notifications/route";
 
 export async function POST(
   request: NextRequest,
@@ -88,6 +90,9 @@ export async function POST(
           }
         }
       });
+
+      // Trigger real-time notification update
+      await triggerNotificationUpdate(invitedUser.id, notification);
 
       return { newMember, notification };
     });
