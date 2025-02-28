@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
-import { triggerNotificationUpdate } from "@/app/api/notifications/route";
+import { db, messaging } from "@/lib/firebase/admin";
 
 export async function POST(
   request: NextRequest,
@@ -64,40 +63,61 @@ export async function POST(
       return NextResponse.json({ error: "User is already a member" }, { status: 400 });
     }
 
-    // Create new plan member with PENDING status and notification in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      const newMember = await tx.planMember.create({
-        data: {
-          userId: invitedUser.id,
-          planId: planId,
-          status: "PENDING"
-        }
-      });
-
-      // Create notification for the invited user
-      const notification = await tx.notification.create({
-        data: {
-          userId: invitedUser.id,
-          title: "New Plan Invitation",
-          message: `${plan.owner.name || 'Someone'} has invited you to join their ${plan.name} plan`,
-          type: "INVITE",
-          metadata: {
-            planId: plan.id,
-            planName: plan.name,
-            inviterId: session.user.id,
-            inviterName: session.user.name,
-            memberId: newMember.id
-          }
-        }
-      });
-
-      // Trigger real-time notification update
-      await triggerNotificationUpdate(invitedUser.id, notification);
-
-      return { newMember, notification };
+    // Create new plan member with PENDING status
+    const newMember = await prisma.planMember.create({
+      data: {
+        userId: invitedUser.id,
+        planId: planId,
+        status: "PENDING"
+      }
     });
 
-    return NextResponse.json(result);
+    // Create notification in Firestore
+    const notificationRef = await db.collection('notifications').add({
+      userId: invitedUser.id,
+      title: "New Plan Invitation",
+      message: `${session.user.name || 'Someone'} has invited you to join their ${plan.name} plan`,
+      type: "PLAN_INVITATION",
+      metadata: {
+        planId: plan.id,
+        planName: plan.name,
+        inviterId: session.user.id,
+        inviterName: session.user.name,
+        memberId: newMember.id
+      },
+      isRead: false,
+      createdAt: new Date()
+    });
+
+    // Send FCM notification if device tokens exist
+    const userDevicesSnapshot = await db
+      .collection('user_devices')
+      .where('userId', '==', invitedUser.id)
+      .get();
+
+    if (!userDevicesSnapshot.empty) {
+      const tokens = userDevicesSnapshot.docs.map(doc => doc.data().token);
+      
+      const message = {
+        notification: {
+          title: 'New Plan Invitation',
+          body: `${session.user.name || 'Someone'} has invited you to join their ${plan.name} plan`
+        },
+        data: {
+          notificationId: notificationRef.id,
+          planId: plan.id,
+          type: 'PLAN_INVITATION'
+        }
+      };
+
+      // Send to all user devices
+      await Promise.all(tokens.map(token => 
+        messaging.send({ ...message, token })
+          .catch(error => console.error('Error sending FCM message:', error))
+      ));
+    }
+
+    return NextResponse.json({ success: true, memberId: newMember.id });
   } catch (error) {
     console.error("Error inviting member:", error);
     return NextResponse.json(

@@ -1,16 +1,21 @@
 "use client";
 
-import { createContext, useContext, useCallback, useEffect } from 'react';
-import useSWR from 'swr';
-import { pusherClient } from '../../lib/pusher';
+import { createContext, useContext, useCallback, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { collection, query, where, onSnapshot, orderBy, Timestamp, doc, updateDoc } from 'firebase/firestore';
+import { onMessage } from 'firebase/messaging';
+import { db, messaging, requestNotificationPermission } from '@/lib/firebase/client';
+import { toast } from 'sonner';
+import useSWR from 'swr';
 
 interface Notification {
   id: string;
   isRead: boolean;
+  title: string;
   message: string;
   type: string;
   metadata: any;
+  createdAt: Date;
 }
 
 interface NotificationContextType {
@@ -23,81 +28,130 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
 
-const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Failed to fetch notifications');
-  return res.json();
+// Custom fetcher for SWR that uses Firestore
+const notificationsFetcher = async (userId: string) => {
+  return new Promise<Notification[]>((resolve, reject) => {
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(
+      notificationsRef,
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+
+    // We only need this snapshot once for initial data
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const notifications = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()
+        })) as Notification[];
+        resolve(notifications);
+        unsubscribe(); // Unsubscribe after getting initial data
+      },
+      reject
+    );
+  });
 };
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
-  const { data: notifications, error, mutate } = useSWR<Notification[]>(
-    '/api/notifications',
-    fetcher,
+  const [firestoreNotifications, setFirestoreNotifications] = useState<Notification[]>([]);
+
+  // Use SWR for initial data fetching and caching
+  const { data: initialNotifications, error } = useSWR(
+    session?.user?.id ? `notifications/${session.user.id}` : null,
+    () => session?.user?.id ? notificationsFetcher(session.user.id) : null,
     {
-      refreshInterval: 0, // Disable polling since we're using WebSocket
-      revalidateOnFocus: false,
-      dedupingInterval: 60000, // Dedupe requests within 1 minute
+      revalidateOnFocus: false, // Disable revalidation on focus
+      revalidateOnReconnect: false, // Disable revalidation on reconnect
     }
   );
 
-  const markAsRead = useCallback(async (notificationId: string) => {
-    try {
-      const response = await fetch(`/api/notifications/${notificationId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isRead: true }),
-      });
-
-      if (!response.ok) throw new Error('Failed to mark notification as read');
-
-      // Optimistically update the cache
-      mutate(
-        notifications?.map(n =>
-          n.id === notificationId ? { ...n, isRead: true } : n
-        ),
-        false
-      );
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  }, [notifications, mutate]);
-
+  // Set up Firestore real-time listener
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    const channel = pusherClient.subscribe(`user-${session.user.id}`);
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(
+      notificationsRef,
+      where('userId', '==', session.user.id),
+      orderBy('createdAt', 'desc')
+    );
 
-    channel.bind('notification-new', (newNotification: Notification) => {
-      mutate(current => {
-        if (!current) return [newNotification];
-        return [...current, newNotification];
-      }, false);
-    });
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const newNotifications = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()
+        })) as Notification[];
+        
+        setFirestoreNotifications(newNotifications);
+      },
+      (error) => {
+        console.error('Error in Firestore listener:', error);
+      }
+    );
 
-    channel.bind('notification-updated', (updatedNotification: Notification) => {
-      mutate(current => {
-        if (!current) return [updatedNotification];
-        return current.map(n =>
-          n.id === updatedNotification.id ? updatedNotification : n
-        );
-      }, false);
-    });
+    return () => unsubscribe();
+  }, [session?.user?.id]);
 
-    return () => {
-      channel.unbind_all();
-      pusherClient.unsubscribe(`user-${session.user.id}`);
+  // Set up FCM for push notifications
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const setupFCM = async () => {
+      const token = await requestNotificationPermission();
+      if (token) {
+        try {
+          await fetch('/api/notifications/register-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+          });
+        } catch (error) {
+          console.error('Error registering FCM token:', error);
+        }
+      }
     };
-  }, [session?.user?.id, mutate]);
 
-  // Calculate unread count
-  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+    setupFCM();
+
+    // Handle foreground messages
+    if (messaging) {
+      const unsubscribe = onMessage(messaging, (payload) => {
+        toast.info(payload.notification?.title, {
+          description: payload.notification?.body,
+        });
+      });
+
+      return () => unsubscribe();
+    }
+  }, [session?.user?.id]);
+
+  const markAsRead = useCallback(async (notificationId: string) => {
+    try {
+      const notificationRef = doc(db, 'notifications', notificationId);
+      await updateDoc(notificationRef, {
+        isRead: true
+      });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      throw error;
+    }
+  }, []);
+
+  // Use Firestore real-time data if available, otherwise use initial SWR data
+  const notifications = firestoreNotifications.length > 0 ? firestoreNotifications : (initialNotifications || []);
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const value = {
-    notifications: notifications ?? [],
+    notifications,
     unreadCount,
     markAsRead,
-    isLoading: !error && !notifications,
+    isLoading: !error && !initialNotifications,
     error,
   };
 

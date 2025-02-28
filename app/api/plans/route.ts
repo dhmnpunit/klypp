@@ -111,7 +111,7 @@ export async function GET(request: Request) {
               members: {
                 some: {
                   userId: user.id,
-                  status: 'ACTIVE' // Only include plans where user is an active member
+                  status: 'ACCEPTED' // Changed from 'ACTIVE' to 'ACCEPTED'
                 }
               }
             }

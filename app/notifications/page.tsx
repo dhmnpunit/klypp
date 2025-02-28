@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Bell, Check, Clock, Users, CreditCard, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useNotifications } from "../contexts/NotificationContext";
 
 interface Notification {
   id: string;
@@ -24,58 +25,7 @@ interface Notification {
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await fetch("/api/notifications");
-      if (!response.ok) {
-        throw new Error("Failed to fetch notifications");
-      }
-      const data = await response.json();
-      setNotifications(data);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to load notifications");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-
-    // Set up polling every 10 seconds
-    const intervalId = setInterval(fetchNotifications, 10000);
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(intervalId);
-  }, []); // Empty dependency array means this effect runs once on mount
-
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const response = await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ notificationId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update notification");
-      }
-
-      setNotifications(notifications.map(notification => 
-        notification.id === notificationId 
-          ? { ...notification, isRead: true }
-          : notification
-      ));
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
+  const { notifications, markAsRead, isLoading, error } = useNotifications();
 
   const handleInvitation = async (memberId: string, action: 'ACCEPT' | 'DECLINE') => {
     try {
@@ -95,9 +45,6 @@ export default function NotificationsPage() {
 
       // Show success message
       toast.success(`Successfully ${action.toLowerCase()}ed invitation`);
-
-      // Refresh notifications after handling the invitation
-      await fetchNotifications();
     } catch (error) {
       console.error(`Error ${action.toLowerCase()}ing invitation:`, error);
       toast.error(error instanceof Error ? error.message : `Failed to ${action.toLowerCase()} invitation`);
@@ -108,7 +55,7 @@ export default function NotificationsPage() {
     switch (type) {
       case "RENEWAL":
         return <Clock className="w-5 h-5 text-blue-500" />;
-      case "INVITE":
+      case "PLAN_INVITATION":
         return <Users className="w-5 h-5 text-green-500" />;
       case "PAYMENT":
         return <CreditCard className="w-5 h-5 text-purple-500" />;
@@ -173,20 +120,22 @@ export default function NotificationsPage() {
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {notification.message}
                       </p>
-                      {notification.type === "INVITE" && 
+                      {notification.type === "PLAN_INVITATION" && 
                        notification.metadata && 
                        (!notification.metadata.status || notification.metadata.status === 'PENDING') && (
                         <div className="mt-3 flex gap-2">
                           <button
                             onClick={() => handleInvitation(notification.metadata!.memberId, 'ACCEPT')}
-                            className="px-3 py-1 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 transition-colors"
+                            className="px-3 py-1 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 transition-colors flex items-center gap-1"
                           >
+                            <Check className="w-4 h-4" />
                             Accept
                           </button>
                           <button
                             onClick={() => handleInvitation(notification.metadata!.memberId, 'DECLINE')}
-                            className="px-3 py-1 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition-colors"
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition-colors flex items-center gap-1"
                           >
+                            <X className="w-4 h-4" />
                             Decline
                           </button>
                         </div>

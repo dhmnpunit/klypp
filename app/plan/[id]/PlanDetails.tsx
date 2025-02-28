@@ -145,8 +145,10 @@ export function PlanDetails({ id }: { id: string }) {
   };
 
   const isOwner = session?.user?.id === plan.ownerId;
-  const memberCount = plan.members?.length || 0;
-  const costPerMember = plan.cost / (memberCount || 1);
+  // Include owner in member count (owner + other members)
+  const memberCount = (plan.members?.filter(member => member.status === 'ACCEPTED').length || 0) + 1;
+  // Calculate cost per member with proper rounding to 2 decimal places
+  const costPerMember = Number((plan.cost / memberCount).toFixed(2));
 
   // Calculate days until renewal
   const now = new Date();
@@ -245,7 +247,7 @@ export function PlanDetails({ id }: { id: string }) {
             {/* Other members */}
             {plan.members && plan.members.length > 0 ? (
               plan.members
-                .filter(member => member.status === 'ACTIVE')
+                .filter(member => member.status === 'ACCEPTED')
                 .map((member) => (
                   <div
                     key={member.id}

@@ -11,7 +11,7 @@ interface Plan {
   cost: number;
   renewsIn: number;
   renewalDate: string;
-  currentMembers: number;
+  members: { status: string }[];
   maxMembers: number;
   startDate: string;
   isOwner: boolean;
@@ -75,7 +75,13 @@ export default function Dashboard() {
     );
   }
 
-  const totalMonthlyCost = plans.reduce((acc, plan) => acc + plan.cost, 0);
+  const totalMonthlyCost = plans.reduce((acc, plan) => {
+    // Calculate number of members (owner + accepted members)
+    const memberCount = (plan.members?.filter(member => member.status === 'ACCEPTED').length || 0) + 1;
+    // Calculate user's share of the plan cost
+    const costPerMember = Number((plan.cost / memberCount).toFixed(2));
+    return acc + costPerMember;
+  }, 0);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -85,7 +91,7 @@ export default function Dashboard() {
         
         {/* Total Monthly Cost */}
         <div className="mb-6">
-          <p className="text-gray-600 dark:text-gray-400 mb-1">Total Monthly Cost</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-1">My Monthly Share</p>
           <p className="text-3xl text-black dark:text-white font-bold">${totalMonthlyCost.toFixed(2)}</p>
         </div>
 
@@ -111,7 +117,15 @@ export default function Dashboard() {
                     </span>
                   )}
                 </div>
-                <p className="text-xl text-black dark:text-white mb-4">${plan.cost.toFixed(2)}/monthly</p>
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-xl text-black dark:text-white">${plan.cost.toFixed(2)}/monthly</p>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Your share</p>
+                    <p className="text-lg text-black dark:text-white">
+                      ${Number((plan.cost / ((plan.members?.filter(member => member.status === 'ACCEPTED').length || 0) + 1)).toFixed(2))}
+                    </p>
+                  </div>
+                </div>
                 
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center">
@@ -122,7 +136,9 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center">
                     <Users2 className="w-5 h-5 text-gray-400 dark:text-gray-500 mr-2" />
-                    <span className="text-gray-600 dark:text-gray-400">{plan.currentMembers}/{plan.maxMembers} members</span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {(plan.members?.filter(member => member.status === 'ACCEPTED').length || 0) + 1}/{plan.maxMembers} members
+                    </span>
                   </div>
                 </div>
                 
