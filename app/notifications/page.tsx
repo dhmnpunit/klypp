@@ -18,6 +18,7 @@ interface Notification {
     inviterId: string;
     inviterName: string;
     memberId: string;
+    status?: string;
   };
 }
 
@@ -166,7 +167,9 @@ export default function NotificationsPage() {
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {notification.message}
                       </p>
-                      {notification.type === "INVITE" && notification.metadata && (
+                      {notification.type === "INVITE" && 
+                       notification.metadata && 
+                       (!notification.metadata.status || notification.metadata.status === 'PENDING') && (
                         <div className="mt-3 flex gap-2">
                           <button
                             onClick={() => handleInvitation(notification.metadata!.memberId, 'ACCEPT')}

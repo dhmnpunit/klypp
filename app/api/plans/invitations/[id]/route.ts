@@ -73,7 +73,19 @@ export async function PUT(
         );
       }
 
-      // Update the invitation status and increment currentMembers
+      // Find the original notification
+      const notification = await prisma.notification.findFirst({
+        where: {
+          userId: currentUser.id,
+          type: "INVITE",
+          metadata: {
+            path: ["memberId"],
+            equals: invitationId
+          }
+        }
+      });
+
+      // Update the invitation status, increment currentMembers, and update notification
       const updatedInvitation = await prisma.$transaction([
         prisma.planMember.update({
           where: { id: invitationId },
@@ -86,16 +98,56 @@ export async function PUT(
               increment: 1
             }
           }
-        })
+        }),
+        ...(notification ? [
+          prisma.notification.update({
+            where: { id: notification.id },
+            data: {
+              message: `You have accepted the invitation to join ${invitation.plan.name}`,
+              isRead: true,
+              metadata: {
+                ...notification.metadata,
+                status: 'ACTIVE'
+              }
+            }
+          })
+        ] : [])
       ]);
 
       return NextResponse.json(updatedInvitation[0]);
     } else {
-      // Decline the invitation
-      const updatedInvitation = await prisma.planMember.update({
-        where: { id: invitationId },
-        data: { status: 'DECLINED' }
+      // Find the original notification
+      const notification = await prisma.notification.findFirst({
+        where: {
+          userId: currentUser.id,
+          type: "INVITE",
+          metadata: {
+            path: ["memberId"],
+            equals: invitationId
+          }
+        }
       });
+
+      // Decline the invitation and update notification
+      const [updatedInvitation] = await prisma.$transaction([
+        prisma.planMember.update({
+          where: { id: invitationId },
+          data: { status: 'DECLINED' }
+        }),
+        ...(notification ? [
+          prisma.notification.update({
+            where: { id: notification.id },
+            data: {
+              message: `You have declined the invitation to join ${invitation.plan.name}`,
+              isRead: true,
+              metadata: {
+                ...notification.metadata,
+                status: 'DECLINED'
+              }
+            }
+          })
+        ] : [])
+      ]);
 
       return NextResponse.json(updatedInvitation);
     }
