@@ -102,9 +102,20 @@ export async function GET(request: Request) {
     }
 
     try {
+      // Fetch both owned plans and plans where user is a member
       const plans = await prisma.plan.findMany({
         where: {
-          ownerId: user.id
+          OR: [
+            { ownerId: user.id }, // Plans owned by the user
+            {
+              members: {
+                some: {
+                  userId: user.id,
+                  status: 'ACTIVE' // Only include plans where user is an active member
+                }
+              }
+            }
+          ]
         },
         orderBy: {
           createdAt: 'desc'
@@ -134,7 +145,8 @@ export async function GET(request: Request) {
             year: 'numeric',
             month: 'short',
             day: 'numeric'
-          })
+          }),
+          isOwner: plan.ownerId === user.id // Add flag to indicate if user is the owner
         };
       });
 

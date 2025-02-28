@@ -14,6 +14,10 @@ interface Plan {
   currentMembers: number;
   maxMembers: number;
   startDate: string;
+  isOwner: boolean;
+  owner: {
+    name: string;
+  };
 }
 
 export default function Dashboard() {
@@ -98,8 +102,14 @@ export default function Dashboard() {
                 onClick={() => router.push(`/plan/${plan.id}`)}
                 className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
               >
-                <div className="mb-2">
+                <div className="mb-2 flex justify-between items-center">
                   <h3 className="text-xl text-black dark:text-white font-bold">{plan.name}</h3>
+                  {!plan.isOwner && (
+                    <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                      <Users className="w-4 h-4 mr-1" />
+                      Shared by {plan.owner.name}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xl text-black dark:text-white mb-4">${plan.cost.toFixed(2)}/monthly</p>
                 
