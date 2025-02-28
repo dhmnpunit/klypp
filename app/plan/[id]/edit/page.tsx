@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect, use } from "react";
-import { ChevronLeft, CreditCard, Users2, Clock } from "lucide-react";
+import { ChevronLeft, CreditCard, Users2, Clock, Calendar } from "lucide-react";
 
 interface Plan {
   id: string;
@@ -10,6 +10,7 @@ interface Plan {
   cost: number;
   renewalFrequency: string;
   maxMembers: number;
+  startDate: string;
 }
 
 export default function EditPlan({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +22,8 @@ export default function EditPlan({ params }: { params: Promise<{ id: string }> }
     name: "",
     cost: 0,
     renewalFrequency: "monthly",
-    maxMembers: 1
+    maxMembers: 1,
+    startDate: new Date().toISOString().split('T')[0]
   });
 
   const resolvedParams = use(params);
@@ -182,6 +184,25 @@ export default function EditPlan({ params }: { params: Promise<{ id: string }> }
               onChange={(e) => setPlanData({ ...planData, maxMembers: parseInt(e.target.value) })}
               className="w-full p-4 pl-12 bg-white rounded-xl border border-gray-200"
               placeholder="Enter maximum members"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+        </div>
+
+        {/* Start Date */}
+        <div>
+          <label htmlFor="startDate" className="block text-lg text-black font-medium mb-2">
+            Start Date
+          </label>
+          <div className="relative">
+            <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
+            <input
+              type="date"
+              id="startDate"
+              value={planData.startDate}
+              onChange={(e) => setPlanData({ ...planData, startDate: e.target.value })}
+              className="w-full p-4 pl-12 bg-white rounded-xl border border-gray-200"
               required
               disabled={isSubmitting}
             />

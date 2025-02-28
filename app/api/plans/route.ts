@@ -3,6 +3,27 @@ import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
 import { authOptions } from '../auth/[...nextauth]/route';
 
+// Helper function to calculate next renewal date
+function calculateNextRenewalDate(startDate: Date, renewalFrequency: string): Date {
+  const date = new Date(startDate);
+  
+  switch (renewalFrequency) {
+    case 'monthly':
+      date.setMonth(date.getMonth() + 1);
+      break;
+    case 'quarterly':
+      date.setMonth(date.getMonth() + 3);
+      break;
+    case 'yearly':
+      date.setFullYear(date.getFullYear() + 1);
+      break;
+    default:
+      date.setMonth(date.getMonth() + 1); // Default to monthly
+  }
+  
+  return date;
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,14 +44,19 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
-    const { name, cost, renewalFrequency, maxMembers } = data;
+    const { name, cost, renewalFrequency, maxMembers, startDate } = data;
+
+    const planStartDate = new Date(startDate);
+    const nextRenewalDate = calculateNextRenewalDate(planStartDate, renewalFrequency);
 
     console.log('Creating plan with data:', {
       name,
       cost,
       renewalFrequency,
       maxMembers,
-      ownerId: user.id // Using the correct user ID
+      startDate,
+      nextRenewalDate,
+      ownerId: user.id
     });
 
     const plan = await prisma.plan.create({
@@ -39,9 +65,10 @@ export async function POST(request: Request) {
         cost: parseFloat(cost),
         renewalFrequency,
         maxMembers: parseInt(maxMembers),
-        ownerId: user.id, // Using the correct user ID
-        currentMembers: 1, // Starting with the owner
-        nextRenewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        ownerId: user.id,
+        currentMembers: 1,
+        startDate: planStartDate,
+        nextRenewalDate,
       },
     });
 

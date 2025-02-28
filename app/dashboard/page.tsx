@@ -13,6 +13,7 @@ interface Plan {
   renewalDate: string;
   currentMembers: number;
   maxMembers: number;
+  startDate: string;
 }
 
 export default function Dashboard() {
@@ -73,51 +74,52 @@ export default function Dashboard() {
   const totalMonthlyCost = plans.reduce((acc, plan) => acc + plan.cost, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Main Content */}
       <div className="p-4 pb-24">
-        <h2 className="text-2xl font-bold text-black mb-6">My Plans</h2>
+        <h2 className="text-2xl font-bold text-black dark:text-white mb-6">My Plans</h2>
         
         {/* Total Monthly Cost */}
         <div className="mb-6">
-          <p className="text-gray-600 mb-1">Total Monthly Cost</p>
-          <p className="text-3xl text-black font-bold">${totalMonthlyCost.toFixed(2)}</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-1">Total Monthly Cost</p>
+          <p className="text-3xl text-black dark:text-white font-bold">${totalMonthlyCost.toFixed(2)}</p>
         </div>
 
         {/* Subscription Cards */}
         <div className="space-y-4">
           {plans.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               No plans yet. Click the + button to add one!
             </div>
           ) : (
             plans.map((plan) => (
-              <div key={plan.id} className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-xl text-black font-bold">{plan.name}</h3>
-                  <button 
-                    onClick={() => router.push(`/plan/${plan.id}/edit`)}
-                    className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
-                  >
-                    <Pencil className="w-5 h-5" />
-                  </button>
+              <div 
+                key={plan.id} 
+                onClick={() => router.push(`/plan/${plan.id}`)}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <div className="mb-2">
+                  <h3 className="text-xl text-black dark:text-white font-bold">{plan.name}</h3>
                 </div>
-                <p className="text-xl text-black mb-4">${plan.cost.toFixed(2)}/monthly</p>
+                <p className="text-xl text-black dark:text-white mb-4">${plan.cost.toFixed(2)}/monthly</p>
                 
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center">
-                    <Calendar className="w-5 h-5 text-gray-400 mr-2" />
-                    <span className="text-gray-600">
+                    <Calendar className="w-5 h-5 text-gray-400 dark:text-gray-500 mr-2" />
+                    <span className="text-gray-600 dark:text-gray-400">
                       Renews in <span className={plan.renewsIn <= 7 ? "text-red-500" : "text-green-500"}>{plan.renewsIn} days</span>
                     </span>
                   </div>
                   <div className="flex items-center">
-                    <Users2 className="w-5 h-5 text-gray-400 mr-2" />
-                    <span className="text-gray-600">{plan.currentMembers}/{plan.maxMembers} members</span>
+                    <Users2 className="w-5 h-5 text-gray-400 dark:text-gray-500 mr-2" />
+                    <span className="text-gray-600 dark:text-gray-400">{plan.currentMembers}/{plan.maxMembers} members</span>
                   </div>
                 </div>
                 
-                <p className="text-gray-600 text-sm">Next renewal: {plan.renewalDate}</p>
+                <div className="flex justify-between text-gray-600 dark:text-gray-400 text-sm">
+                  <span>Next renewal: {plan.renewalDate}</span>
+                  <span>Started: {new Date(plan.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                </div>
               </div>
             ))
           )}
@@ -131,28 +133,6 @@ export default function Dashboard() {
       >
         +
       </button>
-
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 w-full bg-white border-t">
-        <div className="flex justify-around py-3">
-          <button className="flex flex-col items-center text-blue-500">
-            <Home className="w-6 h-6" />
-            <span className="text-xs mt-1">My Plans</span>
-          </button>
-          <button className="flex flex-col items-center text-gray-400">
-            <Users className="w-6 h-6" />
-            <span className="text-xs mt-1">Shared Plans</span>
-          </button>
-          <button className="flex flex-col items-center text-gray-400">
-            <Bell className="w-6 h-6" />
-            <span className="text-xs mt-1">Renewals</span>
-          </button>
-          <button className="flex flex-col items-center text-gray-400">
-            <Settings className="w-6 h-6" />
-            <span className="text-xs mt-1">Settings</span>
-          </button>
-        </div>
-      </div>
     </div>
   );
 } 

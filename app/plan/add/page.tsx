@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ChevronLeft, CreditCard, Users2, Clock } from "lucide-react";
+import { ChevronLeft, CreditCard, Users2, Clock, Calendar } from "lucide-react";
 
 export default function AddPlan() {
   const router = useRouter();
@@ -12,7 +12,8 @@ export default function AddPlan() {
     name: "",
     cost: "",
     renewalFrequency: "monthly",
-    maxMembers: ""
+    maxMembers: "",
+    startDate: new Date().toISOString().split('T')[0]
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -180,6 +181,25 @@ export default function AddPlan() {
               onChange={(e) => setPlanData({ ...planData, maxMembers: e.target.value })}
               className="w-full p-4 pl-12 bg-white rounded-xl border border-gray-200"
               placeholder="Enter maximum members"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+        </div>
+
+        {/* Start Date */}
+        <div>
+          <label htmlFor="startDate" className="block text-lg text-black font-medium mb-2">
+            Start Date
+          </label>
+          <div className="relative">
+            <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
+            <input
+              type="date"
+              id="startDate"
+              value={planData.startDate}
+              onChange={(e) => setPlanData({ ...planData, startDate: e.target.value })}
+              className="w-full p-4 pl-12 bg-white rounded-xl border border-gray-200"
               required
               disabled={isSubmitting}
             />

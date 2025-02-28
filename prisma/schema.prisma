@@ -14,8 +14,10 @@ model User {
   id        String   @id @default(cuid())
   name      String?
   email     String   @unique
+  username  String   @unique
   password  String
   plans     Plan[]   @relation("UserPlans")
+  memberships PlanMember[] @relation("MemberPlans")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -29,9 +31,26 @@ model Plan {
   currentMembers  Int      @default(1)
   ownerId         String
   owner           User     @relation("UserPlans", fields: [ownerId], references: [id])
+  members         PlanMember[] @relation("PlanMembers")
+  startDate       DateTime
   nextRenewalDate DateTime
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([ownerId])
+}
+
+model PlanMember {
+  id        String   @id @default(cuid())
+  userId    String
+  planId    String
+  user      User     @relation("MemberPlans", fields: [userId], references: [id])
+  plan      Plan     @relation("PlanMembers", fields: [planId], references: [id])
+  status    String   @default("PENDING") // PENDING, ACTIVE, DECLINED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, planId])
+  @@index([userId])
+  @@index([planId])
 } 
