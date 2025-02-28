@@ -68,8 +68,8 @@ export async function POST(request: Request) {
         ownerId: user.id,
         currentMembers: 1,
         startDate: planStartDate,
-        nextRenewalDate,
-      },
+        nextRenewalDate
+      }
     });
 
     return NextResponse.json(plan);
@@ -104,11 +104,21 @@ export async function GET(request: Request) {
     try {
       const plans = await prisma.plan.findMany({
         where: {
-          ownerId: user.id, // Using the correct user ID
+          ownerId: user.id
         },
         orderBy: {
-          createdAt: 'desc',
+          createdAt: 'desc'
         },
+        include: {
+          members: true,
+          owner: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
       });
 
       // Calculate days until renewal for each plan

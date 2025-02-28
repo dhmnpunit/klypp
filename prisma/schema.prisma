@@ -18,6 +18,7 @@ model User {
   password  String
   plans     Plan[]   @relation("UserPlans")
   memberships PlanMember[] @relation("MemberPlans")
+  notifications Notification[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -53,4 +54,19 @@ model PlanMember {
   @@unique([userId, planId])
   @@index([userId])
   @@index([planId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   // INVITE, RENEWAL, PAYMENT, SYSTEM
+  isRead    Boolean  @default(false)
+  metadata  Json?    // For storing additional data like planId, invitationId, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 } 

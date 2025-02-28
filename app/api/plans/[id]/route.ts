@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import prisma from '@/lib/prisma';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
 
 // Helper function to calculate next renewal date
 function calculateNextRenewalDate(startDate: Date, renewalFrequency: string): Date {
@@ -26,45 +26,40 @@ function calculateNextRenewalDate(startDate: Date, renewalFrequency: string): Da
 
 // Get a specific plan
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
+    // Use the resolved params.id
+    const resolvedParams = await Promise.resolve(params);
     const plan = await prisma.plan.findUnique({
-      where: {
-        id: resolvedParams.id,
-      },
+      where: { id: resolvedParams.id },
+      include: {
+        members: true,
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
     });
 
     if (!plan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
-    }
-
-    // Check if the user owns the plan
-    if (plan.ownerId !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
     return NextResponse.json(plan);
   } catch (error) {
-    console.error('Error fetching plan:', error);
+    console.error("Error fetching plan:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch plan' },
+      { error: "Failed to fetch plan" },
       { status: 500 }
     );
   }
@@ -72,38 +67,25 @@ export async function GET(
 
 // Update a specific plan
 export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    const plan = await prisma.plan.findUnique({
+      where: { id: params.id }
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!plan) {
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
-    // Check if the plan exists and belongs to the user
-    const existingPlan = await prisma.plan.findUnique({
-      where: {
-        id: resolvedParams.id,
-      },
-    });
-
-    if (!existingPlan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
-    }
-
-    if (existingPlan.ownerId !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    if (plan.ownerId !== session.user.id) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
     const data = await request.json();
@@ -114,9 +96,7 @@ export async function PUT(
 
     // Update the plan
     const updatedPlan = await prisma.plan.update({
-      where: {
-        id: resolvedParams.id,
-      },
+      where: { id: params.id },
       data: {
         name,
         cost: parseFloat(cost.toString()),
@@ -129,9 +109,9 @@ export async function PUT(
 
     return NextResponse.json(updatedPlan);
   } catch (error) {
-    console.error('Error updating plan:', error);
+    console.error("Error updating plan:", error);
     return NextResponse.json(
-      { error: 'Failed to update plan' },
+      { error: "Failed to update plan" },
       { status: 500 }
     );
   }
@@ -139,52 +119,75 @@ export async function PUT(
 
 // Delete a specific plan
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedParams = await params;
     const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    const plan = await prisma.plan.findUnique({
+      where: { id: params.id }
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!plan) {
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
-    // Check if the plan exists and belongs to the user
-    const existingPlan = await prisma.plan.findUnique({
-      where: {
-        id: resolvedParams.id,
-      },
-    });
-
-    if (!existingPlan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+    if (plan.ownerId !== session.user.id) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    if (existingPlan.ownerId !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    // Delete the plan
     await prisma.plan.delete({
-      where: {
-        id: resolvedParams.id,
-      },
+      where: { id: params.id }
     });
 
-    return NextResponse.json({ message: 'Plan deleted successfully' });
+    return NextResponse.json({ message: "Plan deleted successfully" });
   } catch (error) {
-    console.error('Error deleting plan:', error);
+    console.error("Error deleting plan:", error);
     return NextResponse.json(
-      { error: 'Failed to delete plan' },
+      { error: "Failed to delete plan" },
+      { status: 500 }
+    );
+  }
+}
+
+// Patch a specific plan
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const plan = await prisma.plan.findUnique({
+      where: { id: params.id }
+    });
+
+    if (!plan) {
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+    }
+
+    if (plan.ownerId !== session.user.id) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    const data = await request.json();
+    const updatedPlan = await prisma.plan.update({
+      where: { id: params.id },
+      data
+    });
+
+    return NextResponse.json(updatedPlan);
+  } catch (error) {
+    console.error("Error updating plan:", error);
+    return NextResponse.json(
+      { error: "Failed to update plan" },
       { status: 500 }
     );
   }

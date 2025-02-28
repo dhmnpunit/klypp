@@ -1,78 +1,117 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import prisma from '@/lib/prisma';
-import { authOptions } from '../../../auth/[...nextauth]/route';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
+    // First, await the params
+    const params = await Promise.resolve(context.params);
+    const planId = params.id;
+    
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const { email } = await request.json();
     if (!email) {
-      return new NextResponse("Email is required", { status: 400 });
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
     // Check if plan exists and user is the owner
     const plan = await prisma.plan.findUnique({
-      where: { id: params.id },
-      include: { members: true }
+      where: { id: planId },
+      include: { members: true, owner: true }
     });
 
     if (!plan) {
-      return new NextResponse("Plan not found", { status: 404 });
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
     if (plan.ownerId !== session.user.id) {
-      return new NextResponse("Only plan owner can invite members", { status: 403 });
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    // Check if member count would exceed max members
+    // Check if maximum members limit is reached
     if (plan.members.length >= plan.maxMembers) {
-      return new NextResponse("Maximum member limit reached", { status: 400 });
+      return NextResponse.json({ error: "Maximum members limit reached" }, { status: 400 });
+    }
+
+    // Find the invited user
+    const invitedUser = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!invitedUser) {
+      return NextResponse.json({ error: "Invited user not found" }, { status: 404 });
     }
 
     // Check if user is already a member
     const existingMember = await prisma.planMember.findFirst({
       where: {
-        planId: params.id,
-        email: email
+        planId: planId,
+        userId: invitedUser.id
       }
     });
 
     if (existingMember) {
-      return new NextResponse("User is already a member", { status: 400 });
+      return NextResponse.json({ error: "User is already a member" }, { status: 400 });
     }
 
-    // Create invitation
-    const invitation = await prisma.planMember.create({
-      data: {
-        email: email,
-        planId: params.id,
-        status: "PENDING"
-      }
+    // Create new plan member with PENDING status and notification in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const newMember = await tx.planMember.create({
+        data: {
+          userId: invitedUser.id,
+          planId: planId,
+          status: "PENDING"
+        }
+      });
+
+      // Create notification for the invited user
+      const notification = await tx.notification.create({
+        data: {
+          userId: invitedUser.id,
+          title: "New Plan Invitation",
+          message: `${plan.owner.name || 'Someone'} has invited you to join their ${plan.name} plan`,
+          type: "INVITE",
+          metadata: {
+            planId: plan.id,
+            planName: plan.name,
+            inviterId: session.user.id,
+            inviterName: session.user.name,
+            memberId: newMember.id
+          }
+        }
+      });
+
+      return { newMember, notification };
     });
 
-    // TODO: Send invitation email to the user
-
-    return NextResponse.json(invitation);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error inviting member:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to invite member" },
+      { status: 500 }
+    );
   }
 }
 
 // Get all invitations for a plan
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
+    // First, await the params
+    const params = await Promise.resolve(context.params);
+    const planId = params.id;
+    
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
@@ -88,7 +127,7 @@ export async function GET(
     }
 
     const plan = await prisma.plan.findUnique({
-      where: { id: params.id },
+      where: { id: planId },
       include: {
         members: {
           include: {

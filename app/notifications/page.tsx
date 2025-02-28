@@ -1,18 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, Check, Clock, Users, CreditCard } from "lucide-react";
+import { Bell, Check, Clock, Users, CreditCard, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface Notification {
   id: string;
   title: string;
   message: string;
-  type: "renewal" | "payment" | "member" | "system";
+  type: string;
   isRead: boolean;
   createdAt: string;
+  metadata?: {
+    planId: string;
+    planName: string;
+    inviterId: string;
+    inviterName: string;
+    memberId: string;
+  };
 }
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,13 +70,40 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleInvitation = async (memberId: string, action: 'ACCEPT' | 'DECLINE') => {
+    try {
+      const response = await fetch(`/api/plans/invitations/${memberId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to ${action.toLowerCase()} invitation`);
+      }
+
+      // Show success message
+      toast.success(`Successfully ${action.toLowerCase()}ed invitation`);
+
+      // Refresh notifications after handling the invitation
+      await fetchNotifications();
+    } catch (error) {
+      console.error(`Error ${action.toLowerCase()}ing invitation:`, error);
+      toast.error(error instanceof Error ? error.message : `Failed to ${action.toLowerCase()} invitation`);
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "renewal":
+      case "RENEWAL":
         return <Clock className="w-5 h-5 text-blue-500" />;
-      case "member":
+      case "INVITE":
         return <Users className="w-5 h-5 text-green-500" />;
-      case "payment":
+      case "PAYMENT":
         return <CreditCard className="w-5 h-5 text-purple-500" />;
       default:
         return <Bell className="w-5 h-5 text-gray-500" />;
@@ -129,6 +166,22 @@ export default function NotificationsPage() {
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {notification.message}
                       </p>
+                      {notification.type === "INVITE" && notification.metadata && (
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => handleInvitation(notification.metadata!.memberId, 'ACCEPT')}
+                            className="px-3 py-1 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 transition-colors"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleInvitation(notification.metadata!.memberId, 'DECLINE')}
+                            className="px-3 py-1 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition-colors"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                         {formatDate(notification.createdAt)}
                       </p>

@@ -1,20 +1,27 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
+    // First, await the params
+    const params = await Promise.resolve(context.params);
+    const invitationId = params.id;
+    
+    // Get session
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { action } = await request.json();
+    // Parse the action from the request body
+    const body = await request.json();
+    const { action } = body;
 
     if (!action || !['ACCEPT', 'DECLINE'].includes(action)) {
       return NextResponse.json(
@@ -34,7 +41,7 @@ export async function PUT(
 
     // Get the invitation
     const invitation = await prisma.planMember.findUnique({
-      where: { id: params.id },
+      where: { id: invitationId },
       include: {
         plan: true
       }
@@ -69,7 +76,7 @@ export async function PUT(
       // Update the invitation status and increment currentMembers
       const updatedInvitation = await prisma.$transaction([
         prisma.planMember.update({
-          where: { id: params.id },
+          where: { id: invitationId },
           data: { status: 'ACTIVE' }
         }),
         prisma.plan.update({
@@ -86,7 +93,7 @@ export async function PUT(
     } else {
       // Decline the invitation
       const updatedInvitation = await prisma.planMember.update({
-        where: { id: params.id },
+        where: { id: invitationId },
         data: { status: 'DECLINED' }
       });
 
@@ -103,10 +110,11 @@ export async function PUT(
 
 // Get a specific invitation
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
+    const invitationId = await Promise.resolve(context.params.id);
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
@@ -122,7 +130,7 @@ export async function GET(
     }
 
     const invitation = await prisma.planMember.findUnique({
-      where: { id: params.id },
+      where: { id: invitationId },
       include: {
         plan: {
           include: {
