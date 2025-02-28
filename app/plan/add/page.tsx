@@ -113,7 +113,7 @@ export default function AddPlan() {
               id="planName"
               value={planData.name}
               onChange={(e) => setPlanData({ ...planData, name: e.target.value })}
-              className="w-full p-4 pl-12 bg-white rounded-xl border border-gray-200"
+              className="w-full text-black p-4 pl-12 bg-white rounded-xl border border-gray-200"
               placeholder="Enter plan name"
               required
               disabled={isSubmitting}
@@ -133,7 +133,7 @@ export default function AddPlan() {
               id="cost"
               value={planData.cost}
               onChange={(e) => setPlanData({ ...planData, cost: e.target.value })}
-              className="w-full p-4 pl-8 bg-white rounded-xl border border-gray-200"
+              className="w-full text-black p-4 pl-8 bg-white rounded-xl border border-gray-200"
               placeholder="0.00"
               step="0.01"
               required
@@ -179,7 +179,7 @@ export default function AddPlan() {
               id="maxMembers"
               value={planData.maxMembers}
               onChange={(e) => setPlanData({ ...planData, maxMembers: e.target.value })}
-              className="w-full p-4 pl-12 bg-white rounded-xl border border-gray-200"
+              className="w-full text-black p-4 pl-12 bg-white rounded-xl border border-gray-200"
               placeholder="Enter maximum members"
               required
               disabled={isSubmitting}
@@ -199,7 +199,7 @@ export default function AddPlan() {
               id="startDate"
               value={planData.startDate}
               onChange={(e) => setPlanData({ ...planData, startDate: e.target.value })}
-              className="w-full p-4 pl-12 bg-white rounded-xl border border-gray-200"
+              className="w-full text-black p-4 pl-12 bg-white rounded-xl border border-gray-200"
               required
               disabled={isSubmitting}
             />

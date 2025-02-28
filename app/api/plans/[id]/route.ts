@@ -40,7 +40,17 @@ export async function GET(
     const plan = await prisma.plan.findUnique({
       where: { id: resolvedParams.id },
       include: {
-        members: true,
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        },
         owner: {
           select: {
             id: true,

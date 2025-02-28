@@ -8,8 +8,12 @@ import InviteMemberModal from "@/app/components/InviteMemberModal";
 
 interface Member {
   id: string;
-  email: string;
   status: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 interface Plan {
@@ -22,6 +26,10 @@ interface Plan {
   nextRenewalDate: string;
   members: Member[];
   ownerId: string;
+  owner: {
+    name: string;
+    email: string;
+  };
 }
 
 export function PlanDetails({ id }: { id: string }) {
@@ -203,20 +211,37 @@ export function PlanDetails({ id }: { id: string }) {
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Members</h3>
           <div className="space-y-4">
+            {/* Owner first */}
+            <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <p className="text-black dark:text-white font-medium">{plan.owner.name}</p>
+                <p className="text-sm text-gray-500">{plan.owner.email}</p>
+              </div>
+              <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900 dark:text-blue-200">
+                Owner
+              </span>
+            </div>
+            
+            {/* Other members */}
             {plan.members && plan.members.length > 0 ? (
-              plan.members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0"
-                >
-                  <div>
-                    <p className="text-black dark:text-white">{member.email}</p>
-                    <p className="text-sm text-gray-500 capitalize">{member.status.toLowerCase()}</p>
+              plan.members
+                .filter(member => member.status === 'ACTIVE')
+                .map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0"
+                  >
+                    <div>
+                      <p className="text-black dark:text-white font-medium">{member.user.name}</p>
+                      <p className="text-sm text-gray-500">{member.user.email}</p>
+                    </div>
+                    <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full dark:bg-green-900 dark:text-green-200">
+                      Member
+                    </span>
                   </div>
-                </div>
-              ))
+                ))
             ) : (
-              <p className="text-gray-500 dark:text-gray-400">No members yet</p>
+              <p className="text-gray-500 dark:text-gray-400">No other members yet</p>
             )}
           </div>
         </div>
