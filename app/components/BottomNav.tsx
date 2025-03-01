@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Users, Settings } from "lucide-react";
+import { Home, Users, Settings, BarChart2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import NotificationBadge from "./NotificationBadge";
 
@@ -37,10 +37,13 @@ export default function BottomNav() {
           <span className="text-xs mt-1">My Plans</span>
         </button>
         <button 
-          className="flex flex-col items-center text-gray-400 dark:text-gray-500"
+          onClick={() => router.push('/insights')}
+          className={`flex flex-col items-center ${
+            isActive('/insights') ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'
+          }`}
         >
-          <Users className="w-6 h-6" />
-          <span className="text-xs mt-1">Shared Plans</span>
+          <BarChart2 className="w-6 h-6" />
+          <span className="text-xs mt-1">Spending Insights</span>
         </button>
         <button 
           onClick={() => router.push('/notifications')}

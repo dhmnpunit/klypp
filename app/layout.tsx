@@ -1,4 +1,4 @@
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import BottomNav from "./components/BottomNav";
 import { Toaster } from "sonner";
@@ -6,6 +6,11 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
+const outfit = Outfit({ 
+  subsets: ["latin"],
+  variable: '--font-outfit',
+  display: 'swap',
+});
 
 export const metadata = {
   title: "Klypp",
@@ -18,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="light">
+    <html lang="en" className={`light ${outfit.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -36,7 +41,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${outfit.className} font-outfit`}>
         <Providers>
           <NotificationProvider>
             {children}

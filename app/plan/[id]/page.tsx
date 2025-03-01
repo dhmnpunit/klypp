@@ -10,6 +10,8 @@ export default async function Page({ params }: PageProps) {
   const resolvedParams = await Promise.resolve(params);
   const id = resolvedParams.id;
   
+  console.log(`Plan page rendering with ID: ${id}`);
+  
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-screen">

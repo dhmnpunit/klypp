@@ -30,13 +30,20 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log(`GET request for plan with ID: ${params.id}`);
+    
     const session = await getServerSession(authOptions);
+    console.log(`Session:`, session?.user?.email);
+    
     if (!session?.user) {
+      console.log('No authenticated session found');
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     // Use the resolved params.id
     const resolvedParams = await Promise.resolve(params);
+    console.log(`Looking up plan with ID: ${resolvedParams.id}`);
+    
     const plan = await prisma.plan.findUnique({
       where: { id: resolvedParams.id },
       include: {
@@ -62,14 +69,16 @@ export async function GET(
     });
 
     if (!plan) {
+      console.log(`Plan not found with ID: ${resolvedParams.id}`);
       return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
+    console.log(`Successfully found plan: ${plan.name}`);
     return NextResponse.json(plan);
   } catch (error) {
     console.error("Error fetching plan:", error);
     return NextResponse.json(
-      { error: "Failed to fetch plan" },
+      { error: error instanceof Error ? error.message : "Failed to fetch plan" },
       { status: 500 }
     );
   }

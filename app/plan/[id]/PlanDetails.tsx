@@ -24,6 +24,7 @@ interface Plan {
   maxMembers: number;
   startDate: string;
   nextRenewalDate: string;
+  logoUrl?: string;
   members: Member[];
   ownerId: string;
   owner: {
@@ -49,18 +50,25 @@ export function PlanDetails({ id }: { id: string }) {
   useEffect(() => {
     async function fetchPlan() {
       try {
+        console.log(`Fetching plan with ID: ${id}`);
         const response = await fetch(`/api/plans/${id}`, {
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include'
+          credentials: 'include',
+          cache: 'no-store' // Disable caching to ensure fresh data
         });
 
+        console.log(`Response status: ${response.status}`);
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch plan');
+          const errorText = await response.text();
+          console.error(`API error response: ${errorText}`);
+          throw new Error(`Failed to fetch plan: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
+        console.log(`Plan data received:`, data);
         setPlan(data);
       } catch (error) {
         console.error('Error fetching plan:', error);
@@ -158,38 +166,40 @@ export function PlanDetails({ id }: { id: string }) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 px-4 py-4 flex items-center shadow-sm">
+      <div className="bg-white dark:bg-gray-800 px-4 py-4 flex items-center">
         <button onClick={() => router.back()} className="mr-4">
           <ChevronLeft className="w-6 h-6 dark:text-white" />
         </button>
-        <h1 className="text-xl font-semibold text-black dark:text-white">Plan Details</h1>
+        <h1 className="text-xl text-black dark:text-white">Plan Details</h1>
       </div>
 
-      {/* Main Content */}
-      <div className="p-4 space-y-6 max-w-2xl mx-auto">
-        {/* Plan Info Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-black dark:text-white mb-2">{plan.name}</h2>
-              <p className="text-3xl text-black dark:text-white">${plan.cost.toFixed(2)}<span className="text-sm text-gray-500">/{plan.renewalFrequency}</span></p>
-            </div>
-            {isOwner && (
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => router.push(`/plan/${plan.id}/edit`)}
-                  className="p-2 text-gray-600 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
-                >
-                  <Edit className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="p-2 text-gray-600 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-                >
-                  <Trash className="w-5 h-5" />
-                </button>
+      {/* Plan Info */}
+      <div className="p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center mb-4">
+            {plan.logoUrl ? (
+              <img 
+                src={plan.logoUrl} 
+                alt={`${plan.name} logo`} 
+                className="w-16 h-16 rounded-lg mr-4 object-contain"
+                onError={(e) => {
+                  // If image fails to load, replace with a fallback
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null; // Prevent infinite loop
+                  target.src = `https://ui-avatars.com/api/?name=${plan.name.charAt(0)}&background=random&color=fff&size=128`;
+                }}
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-lg mr-4 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-2xl font-bold text-gray-500 dark:text-gray-300">
+                {plan.name.charAt(0).toUpperCase()}
               </div>
             )}
+            <div>
+              <h2 className="text-xl font-semibold text-black dark:text-white">{plan.name}</h2>
+              <p className="text-gray-500 dark:text-gray-400">
+                ${plan.cost.toFixed(2)} / {plan.renewalFrequency}
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
@@ -228,8 +238,10 @@ export function PlanDetails({ id }: { id: string }) {
             </button>
           )}
         </div>
+      </div>
 
-        {/* Members List */}
+      {/* Members List */}
+      <div className="p-4 space-y-6 max-w-2xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Members</h3>
           <div className="space-y-4">

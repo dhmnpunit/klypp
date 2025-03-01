@@ -49,6 +49,24 @@ export async function POST(request: Request) {
     const planStartDate = new Date(startDate);
     const nextRenewalDate = calculateNextRenewalDate(planStartDate, renewalFrequency);
 
+    // Search for company logo
+    let logoUrl = null;
+    try {
+      const logoResponse = await fetch(`${request.headers.get('origin')}/api/logo-search?name=${encodeURIComponent(name)}`, {
+        headers: {
+          'Cookie': request.headers.get('cookie') || ''
+        }
+      });
+      
+      if (logoResponse.ok) {
+        const logoData = await logoResponse.json();
+        logoUrl = logoData.logoUrl;
+      }
+    } catch (error) {
+      console.error('Error fetching logo:', error);
+      // Continue without a logo if there's an error
+    }
+
     console.log('Creating plan with data:', {
       name,
       cost,
@@ -56,6 +74,7 @@ export async function POST(request: Request) {
       maxMembers,
       startDate,
       nextRenewalDate,
+      logoUrl,
       ownerId: user.id
     });
 
@@ -68,7 +87,8 @@ export async function POST(request: Request) {
         ownerId: user.id,
         currentMembers: 1,
         startDate: planStartDate,
-        nextRenewalDate
+        nextRenewalDate,
+        logoUrl
       }
     });
 
@@ -84,8 +104,9 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    console.log('GET /api/plans - Fetching plans');
     const session = await getServerSession(authOptions);
-    console.log('API Session:', session);
+    console.log('API Session user email:', session?.user?.email);
 
     if (!session?.user?.email) {
       console.log('No authenticated session found');
@@ -93,15 +114,20 @@ export async function GET(request: Request) {
     }
 
     // First get the user from the database
+    console.log('Looking up user with email:', session.user.email);
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
 
     if (!user) {
+      console.log('User not found with email:', session.user.email);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    console.log('Found user:', user.id);
+
     try {
+      console.log('Fetching plans for user:', user.id);
       // Fetch both owned plans and plans where user is a member
       const plans = await prisma.plan.findMany({
         where: {
@@ -132,6 +158,8 @@ export async function GET(request: Request) {
         }
       });
 
+      console.log(`Found ${plans.length} plans for user ${user.id}`);
+
       // Calculate days until renewal for each plan
       const plansWithRenewalInfo = plans.map(plan => {
         const now = new Date();
@@ -150,18 +178,19 @@ export async function GET(request: Request) {
         };
       });
 
+      console.log('Successfully processed plans with renewal info');
       return NextResponse.json(plansWithRenewalInfo);
     } catch (error) {
-      console.error('Database error:', error);
+      console.error('Database error fetching plans:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch plans from database' },
+        { error: error instanceof Error ? error.message : 'Failed to fetch plans from database' },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Session error:', error);
+    console.error('Session error in plans API:', error);
     return NextResponse.json(
-      { error: 'Authentication error' },
+      { error: error instanceof Error ? error.message : 'Authentication error' },
       { status: 500 }
     );
   }

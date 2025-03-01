@@ -10,6 +10,9 @@ module.exports = {
       colors: {
         primary: '#6366F1',
       },
+      fontFamily: {
+        outfit: ['var(--font-outfit)'],
+      },
     },
   },
   plugins: [],

@@ -141,11 +141,9 @@ export default function Analytics() {
   const showErrorWarning = error && analytics;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm mb-6">
-      <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Spending Insights</h3>
-      
+    <div className="bg-white/10 dark:bg-gray-800/50 rounded-xl p-3 shadow-sm">
       {showErrorWarning && (
-        <div className="mb-4 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-sm text-yellow-700 dark:text-yellow-400">
+        <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-xs text-yellow-700 dark:text-yellow-400">
           Note: Using estimated data. {error}
           <button 
             onClick={handleRetry}
@@ -156,110 +154,88 @@ export default function Analytics() {
         </div>
       )}
       
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-          <div className="flex items-center mb-2">
-            <DollarSign className="w-5 h-5 text-blue-500 mr-2" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">This Month</span>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="bg-blue-900/20 p-2 rounded-lg">
+          <div className="flex items-center mb-1">
+            <DollarSign className="w-4 h-4 text-blue-400 mr-1" />
+            <span className="text-xs text-gray-300">This Month</span>
           </div>
-          <p className="text-xl font-bold text-black dark:text-white">
+          <p className="text-lg font-bold text-white">
             ${analytics?.currentMonthSpending.toFixed(2) || '0.00'}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            across {analytics?.planCount || 0} plan{(analytics?.planCount || 0) !== 1 ? 's' : ''}
+          <p className="text-xs text-gray-400">
+            {analytics?.planCount || 0} plan{(analytics?.planCount || 0) !== 1 ? 's' : ''}
           </p>
         </div>
         
         <Link 
           href="/savings-logs" 
-          className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors block"
+          className="bg-green-900/20 p-2 rounded-lg hover:bg-green-900/30 transition-colors block"
         >
-          <div className="flex items-center mb-2">
-            <TrendingUp className="w-5 h-5 text-green-500 mr-2" />
-            <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-              Total Savings
+          <div className="flex items-center mb-1">
+            <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
+            <span className="text-xs text-gray-300 flex items-center">
+              Savings
               <button 
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   toggleSavingsInfo();
                 }}
-                className="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="ml-1 text-gray-400 hover:text-gray-300"
               >
                 <Info className="w-3 h-3" />
               </button>
-              <ExternalLink className="w-3 h-3 ml-1 text-gray-400" />
             </span>
           </div>
-          <p className="text-xl font-bold text-black dark:text-white">
+          <p className="text-lg font-bold text-white">
             ${analytics?.totalSavings.toFixed(2) || '0.00'}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            from shared & canceled plans
+          <p className="text-xs text-gray-400">
+            shared & canceled
           </p>
         </Link>
       </div>
       
       {showSavingsInfo && (
-        <div className="mb-4 p-2 bg-gray-50 dark:bg-gray-700/20 rounded-lg text-xs text-gray-600 dark:text-gray-400">
-          <p className="mb-1">Your savings come from two sources:</p>
-          <ul className="list-disc list-inside mb-2">
-            <li>
-              <span className="font-medium">Shared Plans:</span> ${analytics?.sharedPlanSavings?.toFixed(2) || '0.00'} saved by sharing costs with others
-            </li>
-            <li>
-              <span className="font-medium">Canceled Plans:</span> ${analytics?.canceledPlanSavings?.toFixed(2) || '0.00'} saved from {analytics?.canceledPlanCount || 0} canceled plan{(analytics?.canceledPlanCount || 0) !== 1 ? 's' : ''}
-            </li>
-          </ul>
-          <p>Savings calculation:</p>
-          <ul className="list-disc list-inside">
-            <li>For shared plans, we calculate the difference between the full cost and your share.</li>
-            <li>For canceled plans, we count your portion of each plan's cost as savings.</li>
-            <li>Canceled plan savings are estimated for the last 3 months.</li>
-          </ul>
+        <div className="mb-3 p-2 bg-gray-700/30 rounded-lg text-xs text-gray-300">
+          <div className="flex justify-between mb-1">
+            <span>Shared Plans:</span>
+            <span className="font-medium">${analytics?.sharedPlanSavings?.toFixed(2) || '0.00'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Canceled Plans:</span>
+            <span className="font-medium">${analytics?.canceledPlanSavings?.toFixed(2) || '0.00'}</span>
+          </div>
           <div className="mt-2 text-center">
             <Link 
               href="/savings-logs" 
-              className="text-blue-500 hover:underline inline-flex items-center"
+              className="text-blue-400 hover:underline inline-flex items-center text-xs"
             >
-              View detailed savings log
+              View detailed savings
               <ExternalLink className="w-3 h-3 ml-1" />
             </Link>
           </div>
         </div>
       )}
       
-      {/* Savings breakdown in a more visual way */}
       {!showSavingsInfo && (analytics?.sharedPlanSavings || 0) > 0 && (analytics?.canceledPlanSavings || 0) > 0 && (
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="p-2 bg-gray-50 dark:bg-gray-700/20 rounded-lg flex items-center">
-            <Users className="w-4 h-4 text-purple-500 mr-2" />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-2 bg-gray-700/30 rounded-lg flex items-center">
+            <Users className="w-4 h-4 text-purple-400 mr-1" />
             <div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Shared Plan Savings</p>
-              <p className="text-sm font-medium">${analytics?.sharedPlanSavings?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-400">Shared Savings</p>
+              <p className="text-sm font-medium text-white">${analytics?.sharedPlanSavings?.toFixed(2) || '0.00'}</p>
             </div>
           </div>
           
-          <div className="p-2 bg-gray-50 dark:bg-gray-700/20 rounded-lg flex items-center">
-            <Trash2 className="w-4 h-4 text-red-500 mr-2" />
+          <div className="p-2 bg-gray-700/30 rounded-lg flex items-center">
+            <Trash2 className="w-4 h-4 text-red-400 mr-1" />
             <div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Canceled Plan Savings</p>
-              <p className="text-sm font-medium">${analytics?.canceledPlanSavings?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-400">Canceled Savings</p>
+              <p className="text-sm font-medium text-white">${analytics?.canceledPlanSavings?.toFixed(2) || '0.00'}</p>
             </div>
           </div>
-        </div>
-      )}
-      
-      {(analytics?.totalSavings || 0) > 0 && (
-        <div className="text-sm text-gray-600 dark:text-gray-400 italic flex justify-between items-center">
-          <span>You've saved ${analytics?.totalSavings.toFixed(2)} through sharing and canceling plans!</span>
-          <Link 
-            href="/savings-logs" 
-            className="text-blue-500 hover:underline text-xs inline-flex items-center"
-          >
-            View details
-            <ExternalLink className="w-3 h-3 ml-1" />
-          </Link>
         </div>
       )}
     </div>
