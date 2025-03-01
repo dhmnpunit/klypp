@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Home, Users, Bell, Settings, Calendar, Users2, Pencil } from "lucide-react";
+import Analytics from "../components/Analytics";
 
 interface Plan {
   id: string;
@@ -88,6 +89,9 @@ export default function Dashboard() {
       {/* Main Content */}
       <div className="p-4 pb-24">
         <h2 className="text-2xl font-bold text-black dark:text-white mb-6">My Plans</h2>
+        
+        {/* Analytics Component */}
+        {status === "authenticated" && <Analytics />}
         
         {/* Total Monthly Cost */}
         <div className="mb-6">

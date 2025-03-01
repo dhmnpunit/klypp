@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,44 +10,45 @@ datasource db {
 model User {
   id            String         @id @default(cuid())
   name          String?
-  email         String        @unique
-  username      String?       @unique
+  email         String         @unique
+  username      String?        @unique
   password      String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  ownedPlans    Plan[]        @relation("PlanOwner")
-  memberships   PlanMember[]  @relation("MemberPlans")
-  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  canceledPlans CanceledPlan[] @relation("UserCanceledPlans")
   fcmTokens     FCMToken[]
+  notifications Notification[]
+  ownedPlans    Plan[]         @relation("PlanOwner")
+  memberships   PlanMember[]   @relation("MemberPlans")
 }
 
 model Plan {
-  id              String       @id @default(cuid())
-  name            String
-  cost            Float
+  id               String       @id @default(cuid())
+  name             String
+  cost             Float
   renewalFrequency String
-  maxMembers      Int
-  currentMembers  Int         @default(0)
-  startDate       DateTime
-  nextRenewalDate DateTime
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  ownerId         String
-  owner           User        @relation("PlanOwner", fields: [ownerId], references: [id])
-  members         PlanMember[] @relation("PlanMembers")
+  maxMembers       Int
+  currentMembers   Int          @default(0)
+  ownerId          String
+  startDate        DateTime
+  nextRenewalDate  DateTime
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  owner            User         @relation("PlanOwner", fields: [ownerId], references: [id])
+  members          PlanMember[] @relation("PlanMembers")
 
   @@index([ownerId])
 }
 
 model PlanMember {
   id        String   @id @default(cuid())
-  status    String   @default("PENDING") // PENDING, ACTIVE, DECLINED
   userId    String
   planId    String
-  user      User     @relation("MemberPlans", fields: [userId], references: [id])
-  plan      Plan     @relation("PlanMembers", fields: [planId], references: [id])
+  status    String   @default("PENDING")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  plan      Plan     @relation("PlanMembers", fields: [planId], references: [id])
+  user      User     @relation("MemberPlans", fields: [userId], references: [id])
 
   @@index([userId])
   @@index([planId])
@@ -58,15 +56,15 @@ model PlanMember {
 
 model Notification {
   id        String   @id @default(cuid())
+  userId    String
   title     String
   message   String
   type      String
   isRead    Boolean  @default(false)
   metadata  Json?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
@@ -75,9 +73,24 @@ model FCMToken {
   id        String   @id @default(cuid())
   token     String   @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
-} 
+}
+
+model CanceledPlan {
+  id               String   @id @default(cuid())
+  name             String
+  cost             Float
+  renewalFrequency String
+  canceledAt       DateTime @default(now())
+  userId           String
+  memberCount      Int      @default(0)
+  wasOwner         Boolean  @default(true)
+  originalPlanId   String?
+  user             User     @relation("UserCanceledPlans", fields: [userId], references: [id])
+
+  @@index([userId])
+}

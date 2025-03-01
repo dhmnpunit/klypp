@@ -143,7 +143,14 @@ export async function DELETE(
     const planId = resolvedParams.id;
 
     const plan = await prisma.plan.findUnique({
-      where: { id: planId }
+      where: { id: planId },
+      include: {
+        members: {
+          where: {
+            status: 'ACCEPTED'
+          }
+        }
+      }
     });
 
     if (!plan) {
@@ -154,8 +161,23 @@ export async function DELETE(
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
+    // Count accepted members
+    const acceptedMemberCount = plan.members.length;
+
     // Delete plan and its members in a transaction
     await prisma.$transaction([
+      // Store the canceled plan for analytics
+      prisma.canceledPlan.create({
+        data: {
+          name: plan.name,
+          cost: plan.cost,
+          renewalFrequency: plan.renewalFrequency,
+          userId: session.user.id,
+          memberCount: acceptedMemberCount,
+          wasOwner: true,
+          originalPlanId: planId
+        }
+      }),
       // First delete all plan members
       prisma.planMember.deleteMany({
         where: { planId: planId }
