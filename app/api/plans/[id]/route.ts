@@ -90,31 +90,76 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log(`PUT request for plan with ID: ${params.id}`);
+    
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    console.log(`Session:`, session?.user?.email);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const plan = await prisma.plan.findUnique({
-      where: { id: params.id }
+    // First get the user from the database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
     });
 
-    if (!plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (plan.ownerId !== session.user.id) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    // Check if the plan exists and belongs to the user
+    const existingPlan = await prisma.plan.findUnique({
+      where: { id: params.id },
+      include: { owner: true }
+    });
+
+    if (!existingPlan) {
+      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+    }
+
+    if (existingPlan.ownerId !== user.id) {
+      return NextResponse.json({ error: 'You do not have permission to update this plan' }, { status: 403 });
     }
 
     const data = await request.json();
-    const { name, cost, renewalFrequency, maxMembers, startDate } = data;
+    const { name, cost, renewalFrequency, maxMembers, startDate, logoUrl } = data;
 
     const planStartDate = new Date(startDate);
     const nextRenewalDate = calculateNextRenewalDate(planStartDate, renewalFrequency);
 
-    // Update the plan
-    const updatedPlan = await prisma.plan.update({
+    // If logoUrl is provided, use it directly
+    // If not provided and name has changed, fetch a new logo
+    let updatedLogoUrl = logoUrl;
+    
+    if (logoUrl === undefined && name !== existingPlan.name) {
+      try {
+        const origin = request.headers.get('origin') || '';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const logoResponse = await fetch(`${origin}/api/logo-search?name=${encodeURIComponent(name)}`, {
+          headers: {
+            'Cookie': request.headers.get('cookie') || ''
+          },
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (logoResponse.ok) {
+          const logoData = await logoResponse.json();
+          updatedLogoUrl = logoData.logoUrl;
+          console.log('Successfully fetched new logo URL:', updatedLogoUrl);
+        }
+      } catch (error) {
+        console.error('Error fetching logo:', error instanceof Error ? error.message : String(error));
+        // Continue with existing logo if there's an error
+        updatedLogoUrl = existingPlan.logoUrl;
+      }
+    }
+
+    const plan = await prisma.plan.update({
       where: { id: params.id },
       data: {
         name,
@@ -123,14 +168,15 @@ export async function PUT(
         maxMembers: parseInt(maxMembers.toString()),
         startDate: planStartDate,
         nextRenewalDate,
-      },
+        logoUrl: updatedLogoUrl
+      }
     });
 
-    return NextResponse.json(updatedPlan);
+    return NextResponse.json(plan);
   } catch (error) {
-    console.error("Error updating plan:", error);
+    console.error('Failed to update plan:', error);
     return NextResponse.json(
-      { error: "Failed to update plan" },
+      { error: error instanceof Error ? error.message : 'Failed to update plan' },
       { status: 500 }
     );
   }

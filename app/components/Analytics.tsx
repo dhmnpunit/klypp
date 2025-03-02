@@ -116,20 +116,20 @@ export default function Analytics() {
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm mb-6 animate-pulse">
-        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
-        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+      <div className="bg-white/5 dark:bg-gray-800/30 rounded-xl p-3 shadow-sm mb-4 animate-pulse">
+        <div className="h-5 bg-gray-700/50 rounded w-3/4 mb-3"></div>
+        <div className="h-8 bg-gray-700/50 rounded w-1/2 mb-2"></div>
       </div>
     );
   }
 
   if (error && !analytics) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm mb-6">
-        <p className="text-red-500">Unable to load analytics: {error}</p>
+      <div className="bg-white/5 dark:bg-gray-800/30 rounded-xl p-3 shadow-sm mb-4">
+        <p className="text-red-400 text-sm">Unable to load analytics: {error}</p>
         <button 
           onClick={handleRetry}
-          className="mt-2 text-blue-500 text-sm hover:underline"
+          className="mt-2 text-[#8A68DD] text-xs hover:text-[#A684FF]"
         >
           Try again
         </button>
@@ -141,13 +141,13 @@ export default function Analytics() {
   const showErrorWarning = error && analytics;
 
   return (
-    <div className="bg-white/10 dark:bg-gray-800/50 rounded-xl p-3 shadow-sm">
+    <div className="bg-white/5 dark:bg-gray-800/30 rounded-xl p-3 shadow-sm">
       {showErrorWarning && (
-        <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-xs text-yellow-700 dark:text-yellow-400">
+        <div className="mb-3 p-2 bg-yellow-900/10 rounded-lg text-xs text-yellow-400">
           Note: Using estimated data. {error}
           <button 
             onClick={handleRetry}
-            className="ml-2 text-blue-500 hover:underline"
+            className="ml-2 text-[#8A68DD] hover:text-[#A684FF]"
           >
             Retry
           </button>
@@ -155,12 +155,12 @@ export default function Analytics() {
       )}
       
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-blue-900/20 p-2 rounded-lg">
+        <div className="bg-gray-800/30 p-2 rounded-lg">
           <div className="flex items-center mb-1">
-            <DollarSign className="w-4 h-4 text-blue-400 mr-1" />
+            <DollarSign className="w-4 h-4 text-[#8A68DD] mr-1" />
             <span className="text-xs text-gray-300">This Month</span>
           </div>
-          <p className="text-lg font-bold text-white">
+          <p className="text-base font-bold text-white">
             ${analytics?.currentMonthSpending.toFixed(2) || '0.00'}
           </p>
           <p className="text-xs text-gray-400">
@@ -170,10 +170,10 @@ export default function Analytics() {
         
         <Link 
           href="/savings-logs" 
-          className="bg-green-900/20 p-2 rounded-lg hover:bg-green-900/30 transition-colors block"
+          className="bg-gray-800/30 p-2 rounded-lg hover:bg-gray-800/50 transition-colors block"
         >
           <div className="flex items-center mb-1">
-            <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
+            <TrendingUp className="w-4 h-4 text-[#8A68DD] mr-1" />
             <span className="text-xs text-gray-300 flex items-center">
               Savings
               <button 
@@ -188,7 +188,7 @@ export default function Analytics() {
               </button>
             </span>
           </div>
-          <p className="text-lg font-bold text-white">
+          <p className="text-base font-bold text-white">
             ${analytics?.totalSavings.toFixed(2) || '0.00'}
           </p>
           <p className="text-xs text-gray-400">
@@ -198,7 +198,7 @@ export default function Analytics() {
       </div>
       
       {showSavingsInfo && (
-        <div className="mb-3 p-2 bg-gray-700/30 rounded-lg text-xs text-gray-300">
+        <div className="mb-3 p-2 bg-gray-800/30 rounded-lg text-xs text-gray-300">
           <div className="flex justify-between mb-1">
             <span>Shared Plans:</span>
             <span className="font-medium">${analytics?.sharedPlanSavings?.toFixed(2) || '0.00'}</span>
@@ -210,7 +210,7 @@ export default function Analytics() {
           <div className="mt-2 text-center">
             <Link 
               href="/savings-logs" 
-              className="text-blue-400 hover:underline inline-flex items-center text-xs"
+              className="text-[#8A68DD] hover:text-[#A684FF] inline-flex items-center text-xs"
             >
               View detailed savings
               <ExternalLink className="w-3 h-3 ml-1" />
@@ -221,16 +221,16 @@ export default function Analytics() {
       
       {!showSavingsInfo && (analytics?.sharedPlanSavings || 0) > 0 && (analytics?.canceledPlanSavings || 0) > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-2 bg-gray-700/30 rounded-lg flex items-center">
-            <Users className="w-4 h-4 text-purple-400 mr-1" />
+          <div className="p-2 bg-gray-800/30 rounded-lg flex items-center">
+            <Users className="w-4 h-4 text-[#8A68DD] mr-1" />
             <div>
               <p className="text-xs text-gray-400">Shared Savings</p>
               <p className="text-sm font-medium text-white">${analytics?.sharedPlanSavings?.toFixed(2) || '0.00'}</p>
             </div>
           </div>
           
-          <div className="p-2 bg-gray-700/30 rounded-lg flex items-center">
-            <Trash2 className="w-4 h-4 text-red-400 mr-1" />
+          <div className="p-2 bg-gray-800/30 rounded-lg flex items-center">
+            <Trash2 className="w-4 h-4 text-[#8A68DD] mr-1" />
             <div>
               <p className="text-xs text-gray-400">Canceled Savings</p>
               <p className="text-sm font-medium text-white">${analytics?.canceledPlanSavings?.toFixed(2) || '0.00'}</p>

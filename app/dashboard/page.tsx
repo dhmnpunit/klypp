@@ -27,7 +27,6 @@ export default function Dashboard() {
   const router = useRouter();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [planColors, setPlanColors] = useState<Record<string, string>>({});
   
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -51,13 +50,6 @@ export default function Dashboard() {
 
         const data = await response.json();
         setPlans(data);
-
-        // Generate and set colors for each plan
-        const colors: Record<string, string> = {};
-        data.forEach((plan: Plan) => {
-          colors[plan.id] = generatePlanColor(plan.name);
-        });
-        setPlanColors(colors);
       } catch (error) {
         console.error('Error fetching plans:', error);
       } finally {
@@ -69,59 +61,6 @@ export default function Dashboard() {
       fetchPlans();
     }
   }, [status]);
-
-  // Function to generate a color based on the plan name
-  const generatePlanColor = (name: string) => {
-    // Simple hash function to generate a hue value from 0-360
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    // Convert to a hue value (0-360)
-    const hue = hash % 360;
-    
-    // Return HSL color with fixed saturation and lightness
-    return `hsl(${hue}, 70%, 45%)`;
-  };
-
-  // Get color for a plan, either from state or generate a new one
-  const getPlanColor = (plan: Plan) => {
-    if (planColors[plan.id]) {
-      return planColors[plan.id];
-    }
-    
-    const color = generatePlanColor(plan.name);
-    setPlanColors(prev => ({
-      ...prev,
-      [plan.id]: color
-    }));
-    
-    return color;
-  };
-
-  // Function to get a lighter version of the plan color for the background
-  const getLighterColor = (baseColor: string) => {
-    // If it's already an HSL color, reduce saturation
-    if (baseColor.startsWith('hsl')) {
-      // Extract HSL values
-      const hslMatch = baseColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
-      if (hslMatch) {
-        const h = parseInt(hslMatch[1]);
-        const s = parseInt(hslMatch[2]);
-        const l = parseInt(hslMatch[3]);
-        
-        // Reduce saturation by 50%
-        const newS = Math.max(0, s * 0.5);
-        
-        // Return HSL color with reduced saturation and transparency
-        return `hsla(${h}, ${Math.round(newS)}%, ${l}%, 0.7)`;
-      }
-    }
-    
-    // If we can't parse the color, just add some transparency
-    return baseColor + 'B3'; // Add 70% opacity
-  };
 
   return (
     <div className="min-h-screen dashboard-bg">
@@ -165,7 +104,7 @@ export default function Dashboard() {
                   onClick={() => router.push(`/plan/${plan.id}`)}
                   className="relative border border-[#323232] rounded-2xl p-6 shadow-sm cursor-pointer hover:shadow-md transition-all hover:translate-y-[-2px] overflow-hidden backdrop-blur-sm"
                   style={{
-                    background: `linear-gradient(135deg, ${getPlanColor(plan)} 0%, rgba(37, 37, 37, 0.98) 70%)`,
+                    background: '#252525',
                     borderColor: '#323232'
                   }}
                 >
@@ -182,11 +121,17 @@ export default function Dashboard() {
                               src={plan.logoUrl} 
                               alt={`${plan.name} logo`} 
                               className="w-10 h-10 rounded-md mr-3 object-contain bg-white p-1"
+                              onError={(e) => {
+                                // If image fails to load, replace with a fallback
+                                const target = e.target as HTMLImageElement;
+                                target.onerror = null; // Prevent infinite loop
+                                target.src = `https://ui-avatars.com/api/?name=${plan.name.charAt(0)}&background=random&color=fff&size=128`;
+                              }}
                             />
                           ) : (
                             <div 
                               className="w-10 h-10 rounded-md mr-3 flex items-center justify-center text-white font-bold"
-                              style={{ backgroundColor: getPlanColor(plan) }}
+                              style={{ backgroundColor: '#3B82F6' }}
                             >
                               {plan.name.substring(0, 1).toUpperCase()}
                             </div>

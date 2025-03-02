@@ -44,27 +44,41 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
-    const { name, cost, renewalFrequency, maxMembers, startDate } = data;
+    const { name, cost, renewalFrequency, maxMembers, startDate, logoUrl: customLogoUrl } = data;
 
     const planStartDate = new Date(startDate);
     const nextRenewalDate = calculateNextRenewalDate(planStartDate, renewalFrequency);
 
-    // Search for company logo
-    let logoUrl = null;
-    try {
-      const logoResponse = await fetch(`${request.headers.get('origin')}/api/logo-search?name=${encodeURIComponent(name)}`, {
-        headers: {
-          'Cookie': request.headers.get('cookie') || ''
+    // Use custom logo URL if provided, otherwise search for company logo
+    let logoUrl = customLogoUrl;
+    
+    if (!logoUrl) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const logoResponse = await fetch(`${request.headers.get('origin')}/api/logo-search?name=${encodeURIComponent(name)}`, {
+          headers: {
+            'Cookie': request.headers.get('cookie') || ''
+          },
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (logoResponse.ok) {
+          const logoData = await logoResponse.json();
+          logoUrl = logoData.logoUrl;
+          console.log('Successfully fetched logo URL:', logoUrl);
+        } else {
+          console.error('Logo search API returned error:', await logoResponse.text());
         }
-      });
-      
-      if (logoResponse.ok) {
-        const logoData = await logoResponse.json();
-        logoUrl = logoData.logoUrl;
+      } catch (error) {
+        console.error('Error fetching logo:', error instanceof Error ? error.message : String(error));
+        // Continue without a logo if there's an error
       }
-    } catch (error) {
-      console.error('Error fetching logo:', error);
-      // Continue without a logo if there's an error
+    } else {
+      console.log('Using custom logo URL provided by user');
     }
 
     console.log('Creating plan with data:', {
